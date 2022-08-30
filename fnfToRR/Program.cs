@@ -11,9 +11,13 @@ string player1signalpath = Path.Combine(Environment.CurrentDirectory,"player1sig
 
 string player2signalpath = Path.Combine(Environment.CurrentDirectory, "player2signals.txt");
 
+//string player3signalpath = Path.Combine(Environment.CurrentDirectory, "player3signals.txt");
+
 AnimationsData Player1Signals = AnimationsData.CreateFromData(File.ReadAllText(player1signalpath));
 
 AnimationsData Player2Signals = AnimationsData.CreateFromData(File.ReadAllText(player2signalpath));
+
+//AnimationsData Player3Signals = AnimationsData.CreateFromData(File.ReadAllText(player3signalpath));
 
 Song song = Song.ReadFromJson(File.ReadAllText(chartoread));
 
@@ -43,9 +47,35 @@ NoteType nt_p2 = (NoteType)(-1);
 bool Player2 = false;
 
 
-Console.WriteLine("Creating showtape data... (THIS MAY TAKE A WHILE SINCE ITS UNOPTIMIZED AT THE MOMENT.)");
+Console.WriteLine("Creating showtape data...");
 
-for (int i = 0; i <= 10000; i++) //TODO: figure out how to properly calculate stuff lol
+int lastsectionval = song.Sections.Count - 1;
+
+Section lastsection = song.Sections[lastsectionval];
+
+Note lastnote = null;
+
+while (lastnote == null)
+{
+    if (lastsectionval == 0)
+    {
+        throw new IndexOutOfRangeException("Chart has no notes??? WTF are you doing.");
+    }
+    if (lastsection.sectionNotes.Count == 0)
+    {
+        lastsectionval--;
+        lastsection = song.Sections[lastsectionval];
+    }
+    else
+    {
+        lastnote = new Note(lastsection.sectionNotes.Last());
+    }
+}
+
+
+int furthest_bit = (int)((lastnote.StrumTime + lastnote.SustainLength + 100) * 0.06) + 25;
+
+for (int i = 0; i <= furthest_bit; i++) //TODO: figure out how to properly calculate stuff lol
 {
     BitArray bit = new BitArray(300);
     if (steps_left_p1 != 0)
