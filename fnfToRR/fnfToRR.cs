@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 public static class fnfToRR
 {
 
-    static void ApplyFunny(Song song) //This code is from a really old unreleased project. I've just decided to recycle it
+    static void ApplyFunny(Song song, int seed) //This code is from a really old unreleased project. I've just decided to recycle it
     {
-        Random rng = new Random();
+        Random rng = new Random(seed);
         List<string> patterns = new List<string>
         {
         "lrlrududludrrdldurur",
@@ -48,30 +48,12 @@ public static class fnfToRR
         };
         int yes = 0;
         int currentpattern = rng.Next(0, patterns.Count - 1);
-        int currentoffset = rng.Next(0, 30);
-        bool last = false;
         foreach (Section sect in song.Sections)
         {
-            yes = currentoffset;
-            if (last != sect.mustHitSection)
-            {
-                if (!sect.mustHitSection)
-                {
-                    currentpattern = rng.Next(0, patterns.Count - 1);
-                    currentoffset = rng.Next(0, patterns[currentpattern].Length);
-                    //Console.WriteLine(song.Player2Char + " turn detected, changing pattern to pattern #" + currentpattern);
-                }
-            }
-            last = sect.mustHitSection;
             List<Note> notes = new List<Note>();
-            //Note[] notez = sect.ConvertSectionToNotes();
-            /*for (int i=0; i < notez.Length; i++)
-            {
-                
-            }*/
             foreach (Note note in sect.ConvertSectionToNotes())
             {
-                switch (patterns[currentpattern][yes % (patterns[currentpattern].Length - 1)])
+                switch (patterns[currentpattern][yes])
                 {
                     case 'l':
                         note.NoteData = NoteType.Left;
@@ -90,13 +72,18 @@ public static class fnfToRR
                         break;
                 }
                 yes++;
+                if (yes >= patterns[currentpattern].Length)
+                {
+                    yes = 0;
+                    currentpattern = rng.Next(0, patterns.Count - 1);
+                }
                 notes.Add(note);
             }
             sect.SaveNotes(notes);
         }
     }
 
-    public static bool ConvertRR(string showtapetoread, int mouthsignal, int opponentmouthsignal)
+    public static bool ConvertRR(string showtapetoread, int mouthsignal, int opponentmouthsignal, int seed)
     {
         rshwFormat thefile = rshwFormat.ReadFromFile(showtapetoread);
         List<BitArray> newSignals = new List<BitArray>();
@@ -123,13 +110,78 @@ public static class fnfToRR
 
         List<Note> notes = new List<Note>();
 
+        Note? n = null;
+
+        Note? n2 = null;
+
         for (int i = 0; i < newSignals.Count; i++)
         {
             if (newSignals[i].Get(mouthsignal))
             {
-                //this is incomplete
+                if (n == null)
+                {
+                    n = new Note((int)(i / 0.06), NoteType.Left, true);
+                }
+                n.SustainLength += (float)(1 / 0.06);
+                //this is complete
+            }
+            else
+            {
+                if (n != null)
+                {
+                    if (n.SustainLength <= (float)(9 / 0.06))
+                    {
+                        n.SustainLength = 0f;
+                    }
+                    notes.Add(n);
+                    n = null;
+                }
+            }
+
+            if (newSignals[i].Get(opponentmouthsignal))
+            {
+                if (n2 == null)
+                {
+                    n2 = new Note((int)(i / 0.06), NoteType.Left, false);
+                }
+                n2.SustainLength += (float)(1 / 0.06);
+                //this is complete
+            }
+            else
+            {
+                if (n2 != null)
+                {
+                    if (n2.SustainLength <= (float)(9 / 0.06))
+                    {
+                        n2.SustainLength = 0f;
+                    }
+                    notes.Add(n2);
+                    n2 = null;
+                }
             }
         }
+
+        Song s = new Song();
+
+        s.Name = "Tutorial";
+
+        s.needsVoices = false;
+
+        s.bpm = 100;
+
+        s.Sections.Add(new Section(true, notes));
+
+        ApplyFunny(s, seed);
+
+        s.speed = 1.6f;
+
+        Console.WriteLine("Converted! Saving...");
+
+        Song.SaveToFile(Path.Combine(Environment.CurrentDirectory, "output.json"), s);
+
+        //f.Save(Path.Combine(Environment.CurrentDirectory, "output.rshw"));
+
+        Console.WriteLine("Chart created, it should be called \"output.json\" in the folder where the EXE is, it takes the place of Tutorial by default.");
 
         return true;
     }
